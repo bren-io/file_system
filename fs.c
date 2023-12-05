@@ -4,13 +4,16 @@
 #include <stdint.h>
 #include <string.h>
 
-//---------
+//-----------
 // Data
 //-----------
 
 #define INODES 100
 #define BLOCKSIZE 512
 #define NUMBLOCKS 1000
+#define ROOT_INDOE_ID 0
+#define REG_FILE_FLAG 0
+#define DIR_FILE_FLAG 1
 
 unsigned char* fs;
 
@@ -28,24 +31,20 @@ struct inode {
   size_t file_size;
   int data_blocks[NUMBLOCKS];
   int file_type;
+  char file_name[256];
 };
 
 struct datablock {
   char data[BLOCKSIZE];
 };
 
-struct direntry {
-  unsigned int inode;
-  char name[256];
-  int file_type;
-  uint32_t status;
-};
-
 struct superblock * sb;
 struct inode inodes[INODES];
 uint32_t * fbl;
 
+//------------
 // END DATA
+//------------
 
 void mapfs(int fd){
   if ((fs = mmap(NULL, FSSIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == NULL){
@@ -61,7 +60,6 @@ void unmapfs(){
 
 
 void formatfs(){
-  
   // Calculate sizes of file system components
   size_t sb_size = sizeof(struct superblock);
   size_t inode_size = sizeof(struct inode) * INODES;
@@ -86,6 +84,11 @@ void formatfs(){
     for (int j = 0; j < NUMBLOCKS; j++){
       inodes[i].data_blocks[j] = -1;
     }
+
+    if (i == ROOT_INODE_ID){
+      inodes[i].status = 1;
+      inodes[i].file_type = 1;
+    }
   }
 
   // Init fbl
@@ -95,17 +98,17 @@ void formatfs(){
 
 
 void loadfs(){
-  
+  // Load superblock
   sb = (struct superblock *)fs;
 
   // Load inodes
   for (int i = 0; i < sb->n_inodes, i++){
-    size_t e_inode = sb->inode_offset + (i * sizeof(struct inode));
-    memcpy(&inodes[i], fs + e_inode, sizeof(struct inode));
+    struct inode * e_inode = (struct inode *)(fs + sb->inode_offset + (i * sizeof(struct inode)));
+    inodes[i] = *e_inode;
   }
 
+  // Load fbl
   fbl = (uint32_t *)(fs + sb->fbl_offset);
-  
 }
 
 
@@ -114,6 +117,10 @@ void lsfs(){
 }
 
 void addfilefs(char* fname){
+  // Find free inode
+  int free_inode = -1;
+  for (int i = 0; i < sb->n_inodes; i++){
+    struct direntry * entry = (struct direntry *)(fs + sb->inode_offset + (i * sizeof(struct direntry));
   
 }
 
