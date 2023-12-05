@@ -1,0 +1,11 @@
+# Environment
+.env
+
+# Emacs IDE backup
+.gitignore~
+README.md~
+*.c~
+*.h~
+
+# Application
+filefs
