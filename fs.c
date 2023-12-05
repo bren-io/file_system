@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 //-----------
 // Data
@@ -11,9 +14,9 @@
 #define INODES 100
 #define BLOCKSIZE 512
 #define NUMBLOCKS 1000
-#define ROOT_INDOE_ID 0
-#define REG_FILE_FLAG 0
-#define DIR_FILE_FLAG 1
+#define ROOT_INODE_ID 0
+#define REG_FILE 1
+#define DIR_FILE 2
 
 unsigned char* fs;
 
@@ -29,9 +32,9 @@ struct inode {
   uint32_t inode_id;
   uint32_t status;
   size_t file_size;
-  int data_blocks[NUMBLOCKS];
   int file_type;
-  char file_name[256];
+  char name[256];
+  int data_blocks[NUMBLOCKS];
 };
 
 struct datablock {
@@ -87,7 +90,7 @@ void formatfs(){
 
     if (i == ROOT_INODE_ID){
       inodes[i].status = 1;
-      inodes[i].file_type = 1;
+      inodes[i].file_type = DIR_FILE;
     }
   }
 
@@ -98,17 +101,19 @@ void formatfs(){
 
 
 void loadfs(){
+  /*
   // Load superblock
   sb = (struct superblock *)fs;
 
   // Load inodes
-  for (int i = 0; i < sb->n_inodes, i++){
+  for (int i = 0; i < sb->n_inodes; i++){
     struct inode * e_inode = (struct inode *)(fs + sb->inode_offset + (i * sizeof(struct inode)));
     inodes[i] = *e_inode;
   }
 
   // Load fbl
   fbl = (uint32_t *)(fs + sb->fbl_offset);
+  */
 }
 
 
@@ -116,11 +121,43 @@ void lsfs(){
   
 }
 
+
 void addfilefs(char* fname){
+
   // Find free inode
   int free_inode = -1;
   for (int i = 0; i < sb->n_inodes; i++){
-    struct direntry * entry = (struct direntry *)(fs + sb->inode_offset + (i * sizeof(struct direntry));
+    if (inodes[i].status == 0){
+      free_inode = i;
+      break;
+    }
+  }
+  if (free_inode == -1){
+    perror("Error: No inode available");
+    return;
+  }
+
+  // Init the inode
+  struct inode * new_file = &inodes[free_inode];
+  new_file->inode_id = free_inode;
+  new_file->status = REG_FILE;
+  new_file->file_size = 0;
+
+  // Get the stats to see what type
+  struct stat file_stat;
+  if (stat(fname, &file_stat) == 0){
+    if (S_ISDIR(file_stat.st_mode)){
+      new_file->file_type = DIR_FILE;
+    } else {
+      new_file->file_type = REG_FILE;
+    }
+  }
+  else{
+    perror("Error: Failed to retrieve file stats");
+    return;
+  }
+
+  strcpy(new_file->name, fname);
   
 }
 
